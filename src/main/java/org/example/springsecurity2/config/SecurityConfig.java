@@ -2,11 +2,14 @@ package org.example.springsecurity2.config;
 
 import jdk.jfr.Enabled;
 import lombok.RequiredArgsConstructor;
+import org.example.springsecurity2.dao.UserDao;
 import org.springframework.boot.autoconfigure.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,10 +33,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
-    private final static List<UserDetails> APPLICATION_USERS = Arrays.asList(
-            new User("huz@gmail.com", "pass", Collections.singleton(new SimpleGrantedAuthority("ROLE_ADMIN"))),
-            new User("user@gmail.com", "pass", Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")))
-    );
+    private final UserDao userDao;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception{
@@ -57,6 +57,10 @@ public class SecurityConfig {
         authenticationProvider.setPasswordEncoder(passwordEncoder());
         return authenticationProvider;
     }
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -69,11 +73,7 @@ public class SecurityConfig {
         return new UserDetailsService() {
             @Override
             public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-                return APPLICATION_USERS
-                        .stream()
-                        .filter(u -> u.getUsername().equals(email))
-                        .findFirst()
-                        .orElseThrow(()-> new UsernameNotFoundException("No user was found."));
+                return userDao.findUserByEmail(email);
             }
         };
     }
